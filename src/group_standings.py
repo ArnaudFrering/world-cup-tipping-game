@@ -93,54 +93,32 @@ def compute_group_standings(fixtures_df: pd.DataFrame,
                 t
             )
         )
-        for t in teams_sorted:
-            rows.append(overall[group][t].copy())
+        for pos, t in enumerate(teams_sorted, start=1):
+            row = overall[group][t].copy()
+            row["position_in_the_group"] = pos
+            rows.append(row)
+
 
     df = pd.DataFrame(rows, columns=[
         "group", "team", "played", "wins", "draws", "losses",
-        "goals_for", "goals_against", "goal_diff", "points"
+        "goals_for", "goals_against", "goal_diff", "points", "position_in_the_group"
     ])
 
     df = df.reset_index(drop=True)
+    df["group_letter"] = df["group"].str.split(" ").str[1]
+    df["group_and_position"] = df["position_in_the_group"].astype(str)+df["group_letter"]
     return df
 
 
 def standings_between_thirds(standings_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Extract and rank all 3rd-placed teams from each group using the same tie-breakers:
-      1) points desc
-      2) goal_diff desc
-      3) goals_for desc
-      4) team name asc
+    # Filter teams in 3rd position
+    thirds = standings_df[standings_df["position_in_the_group"] == 3].copy()
 
-    Expects standings_df to contain at least columns:
-      ['group', 'team', 'points', 'goal_diff', 'goals_for']
+    # Sort by the required criteria
+    thirds_sorted = thirds.sort_values(
+        by=["points", "goal_diff", "goals_for"],
+        ascending=[False, False, False]
+    )
 
-    Returns a DataFrame with the same columns for the 3rd-placed teams, sorted by the rules above.
-    """
-    required = {"group", "team", "points", "goal_diff", "goals_for"}
-    if not required.issubset(set(standings_df.columns)):
-        raise ValueError(f"standings_df must contain columns: {sorted(required)}")
-
-    thirds = []
-    for group, gdf in standings_df.groupby("group", sort=True):
-        g_sorted = gdf.sort_values(
-            by=["points", "goal_diff", "goals_for", "team"],
-            ascending=[False, False, False, True],
-            kind="mergesort"
-        )
-        if len(g_sorted) >= 3:
-            thirds.append(g_sorted.iloc[2].to_dict())
-
-    if not thirds:
-        # return empty dataframe with the same columns as standings_df (preserve column order)
-        return standings_df.head(0).copy()
-
-    thirds_df = pd.DataFrame(thirds)
-    thirds_df = thirds_df.sort_values(
-        by=["points", "goal_diff", "goals_for", "team"],
-        ascending=[False, False, False, True],
-        kind="mergesort"
-    ).reset_index(drop=True)
-
-    return thirds_df
+    # Return the top 8 rows
+    return thirds_sorted.head(8)
