@@ -110,15 +110,33 @@ def generate_next_round(
         home_game = prev_games[0]
         away_game = prev_games[1]
 
+        # Convert to int for comparison (handle both string and int nb values)
+        try:
+            home_game_int = int(home_game)
+            away_game_int = int(away_game)
+        except (ValueError, TypeError):
+            home_game_int = home_game
+            away_game_int = away_game
+
         # Get the result of the home_game
-        home_game_result = results_df[results_df['nb'] == home_game].iloc[0]
-        # The winner is the value in the 'result' column (e.g., "Ecuador")
-        home_team = home_game_result['result']
+        home_game_result = results_df[results_df['nb'] == home_game_int]
+        if home_game_result.empty:
+            home_game_result = results_df[results_df['nb'] == home_game]
+        
+        if home_game_result.empty:
+            raise ValueError(f"Game {home_game}/{home_game_int} not found in results_df")
+        
+        home_team = home_game_result.iloc[0]['result']
 
         # Get the result of the away_game
-        away_game_result = results_df[results_df['nb'] == away_game].iloc[0]
-        # The winner is the value in the 'result' column (e.g., "Belgium")
-        away_team = away_game_result['result']
+        away_game_result = results_df[results_df['nb'] == away_game_int]
+        if away_game_result.empty:
+            away_game_result = results_df[results_df['nb'] == away_game]
+        
+        if away_game_result.empty:
+            raise ValueError(f"Game {away_game}/{away_game_int} not found in results_df")
+        
+        away_team = away_game_result.iloc[0]['result']
 
         # Add to the next round
         next_round_rows.append({
